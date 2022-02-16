@@ -1,0 +1,15 @@
+{% for post in object_list %}
+
+    <article class="post">
+        <h2>
+            <a href="{{ post.get_absolute_url }}">{{ post.title }}</a>
+        </h2>
+        <p class="post-info">
+            <span>{{ post.date|date:"F j, Y" }}</span>
+            <span>{{ post.author }}</span>
+        </p>
+        <p>{{ post.body|truncatewords:20 }}</p>
+        <a href="{{ post.get_absolute_url }}" class="read-more">Read more</a>
+    </article>
+
+{% endfor %}
