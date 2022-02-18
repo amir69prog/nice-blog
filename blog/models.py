@@ -9,7 +9,7 @@ class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts', related_query_name='post')
     title = models.CharField(max_length=200)
     body = models.TextField()
-    reading_time = models.DurationField(blank=True) # in seconds
+    reading_time = models.DurationField() # in seconds
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
 
