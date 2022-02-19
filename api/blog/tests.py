@@ -71,6 +71,13 @@ class BlogAPITests(APITestCase):
         token = response.json().get('key')
         header = {'Authorization': f'Token {token}'}
         return header
+    
+    def test_post_content(self):
+        """ Testing post content """
+        self.assertEqual(self.post1.author, self.user1)
+        self.assertEqual(self.post1.title, 'title')
+        self.assertEqual(self.post1.body, 'body')
+        self.assertEqual(self.post1.reading_time, timedelta(seconds=300))
 
     def test_no_authorization_post_list_view(self):
         """ Testing `PostListView` without any authorization """
