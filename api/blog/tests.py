@@ -1,4 +1,5 @@
 from datetime import timedelta
+import email
 from typing import Any, Dict
 
 from django.contrib.auth import get_user_model
@@ -15,201 +16,124 @@ from blog.models import Post
 User = get_user_model()
 
 
-class BlogAPITests(APITestCase):
+class BlogTest(APITestCase):
 
     def setUp(self):
         self.user1 = User.objects.create_user(
-            username='user1', password='passuser1')
+            phone_number='09211111111',
+            username='user1',
+            email='useremail1@gmail.com',
+            password='123456789',
+            is_verified=True
+        )
         self.user2 = User.objects.create_user(
-            username='user2', password='passuser2')
+            phone_number='09222222222',
+            username='user2',
+            email='useremail2@gmail.com',
+            password='123456789',
+            is_verified=True
+        )
         self.post1 = Post.objects.create(
             author=self.user1,
-            title='title',
-            body='body',
-            reading_time=timedelta(seconds=300)
+            title='Post one title',
+            body='Post one body',
+            reading_time=timedelta(seconds=300) # 5min
         )
 
-    def login_by_session(test_func, username='user1', password='passuser1'):
-        def wrapper(self):
-            self.client.login(username=username, password=password)
-            return test_func(self)
-        return wrapper
 
-    def get_response_post_list_view(self) -> HttpResponse:
-        """ Return response for PostListView """
+    def authenticate(self, phone_number: str, password: str) -> str:
+        """ Get the access key then authenticate with the token """
+        url = reverse('token_obtain_pair')  # url getting token
+        response = self.client.post(
+            url,
+            {
+                'phone_number': phone_number,
+                'password': password
+            },
+        )
+        access_key = response.json().get('access')
+        return 'Bearer ' + access_key
+
+    def test_blog_list_view(self):
+        access_key = self.authenticate('09211111111', '123456789')
         url = reverse('api-blog:list')
-        response = self.client.get(url)
-        return response
+        response = self.client.get(url, HTTP_AUTHORIZATION=access_key)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def get_response_post_detail_view(self, id: int) -> HttpResponse:
-        """ Return response for PostDetailView """
-        url = reverse('api-blog:detail', kwargs={'pk': id})
-        response = self.client.get(url)
-        return response
+    def test_create_post(self):
+        payload = {
+            "title": "Post two title",
+            "body": "Post two body",
+            "reading_time": '300'
+        }
 
-    def create_post(self, payload: Dict, header: Dict) -> HttpResponse:
+        access_key = self.authenticate('09211111111', '123456789')
         url = reverse('api-blog:list')
-        response = self.client.post(url, data=payload, header=header)
-        return response
-
-    def update_post(self, id: int, payload: Dict, header: Dict) -> HttpResponse:
-        url = reverse('api-blog:detail', kwargs={'pk': id})
-        response = self.client.put(url, data=payload, header=header)
-        return response
-
-    def delete_post(self, id: int, header: Dict) -> HttpResponse:
-        url = reverse('api-blog:detail', kwargs={'pk': id})
-        response = self.client.delete(url, header=header)
-        return response
-
-    def get_token(self, username: str = 'user1', password: str = 'passuser1', logout: bool = False) -> Dict:
-        if logout:
-            self.client.logout()
-        url = reverse('rest_login')
-        payload = {'username': username, 'password': password}
-        response = self.client.post(url, data=payload, )
-        token = response.json().get('key')
-        header = {'Authorization': f'Token {token}'}
-        return header
+        response = self.client.post(url, data=payload, HTTP_AUTHORIZATION=access_key)
+        post2 = Post.objects.filter(id=2).get()
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Post.objects.count(), 2)
+        self.assertEqual(post2.author, self.user1)
+        self.assertEqual(post2.title, 'Post two title')
+        self.assertEqual(post2.body, 'Post two body')
+        self.assertEqual(post2.reading_time, timedelta(seconds=300))
     
-    def test_post_content(self):
-        """ Testing post content """
-        self.assertEqual(self.post1.author, self.user1)
-        self.assertEqual(self.post1.title, 'title')
-        self.assertEqual(self.post1.body, 'body')
-        self.assertEqual(self.post1.reading_time, timedelta(seconds=300))
-
-    def test_no_authorization_post_list_view(self):
-        """ Testing `PostListView` without any authorization """
-        response = self.get_response_post_list_view()
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    @login_by_session
-    def test_athorization_post_list_view(self):
-        """ Testing `PostListView` with authorization """
-        response = self.get_response_post_list_view()
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_no_authorizatin_post_detail_view(self):
-        """ Testing `PostDetailView` without any authorization """
-        response = self.get_response_post_detail_view(id=self.post1.id)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    @login_by_session
-    def test_authorizatin_post_detail_view(self):
-        """ Testing `PostDetailView` without any authorization """
-        response = self.get_response_post_detail_view(id=self.post1.id)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-    def test_create_post_with_token(self):
+    def test_update_post(self):
         payload = {
-            'title': 'title',
-            'body': 'body',
-            'reading_time': 300
+            "title": "Post two title",
+            "body": "Post two body",
+            "reading_time": '300'
         }
-        header = self.get_token()
-        response = self.create_post(payload, header)
-        id_ = response.json().get('id')
-        post = Post.objects.get(id=id_)
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(post.author, self.user1)
-        self.assertEqual(post.title, 'title')
-        self.assertEqual(post.body, 'body')
-        self.assertEqual(post.reading_time, timedelta(seconds=300))
-        self.assertEqual(Post.objects.count(), 2)
-
-    def test_update_post_with_token(self):
-        payload = {
-            'title': 'title',
-            'body': 'body',
-            'reading_time': 300
-        }
-        header = self.get_token()
-
-        response = self.create_post(payload, header)
-        id_ = response.json().get('id')
-        post = Post.objects.get(id=id_)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(post.author, self.user1)
-        self.assertEqual(post.title, 'title')
-        self.assertEqual(post.body, 'body')
-        self.assertEqual(post.reading_time, timedelta(seconds=300))
-        self.assertEqual(Post.objects.count(), 2)
+        access_key = self.authenticate('09211111111', '123456789')
+        url = reverse('api-blog:list')
+        response = self.client.post(url, data=payload, HTTP_AUTHORIZATION=access_key)
+        post2 = Post.objects.filter(id=2).get()
 
         payload_update = {
-            'title': 'title updated',
-            'body': 'body updated',
-            'reading_time': 600
+            "title": "Post two title updated",
+            "body": "Post two body updated",
+            "reading_time": '600'
         }
-        response = self.update_post(id_, payload_update, header)
-        post = Post.objects.get(id=id_)
+
+        post2 = Post.objects.filter(id=post2.id).get()
+        url = reverse('api-blog:detail', args=(post2.id,))
+        response = self.client.put(url, data=payload_update, HTTP_AUTHORIZATION=access_key)
+        post2 = Post.objects.filter(id=post2.id).get() # call again becouse it was cached
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(post.author, self.user1)
-        self.assertEqual(post.title, 'title updated')
-        self.assertEqual(post.body, 'body updated')
-        self.assertEqual(post.reading_time, timedelta(seconds=600))
-        self.assertEqual(Post.objects.count(), 2)
-
-    def test_delete_post_with_token(self):
-        header = self.get_token()
-        response = self.delete_post(2, header)
-
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-        self.assertEqual(Post.objects.count(), 1)
-
-    def test_delete_post_with_diffrent_author(self):
+        self.assertEqual(post2.author, self.user1)
+        self.assertEqual(post2.title, 'Post two title updated')
+        self.assertEqual(post2.body, 'Post two body updated')
+        self.assertEqual(post2.reading_time, timedelta(seconds=600))
+    
+    def test_delete_post(self):
         payload = {
-            'title': 'title',
-            'body': 'body',
-            'reading_time': 300
+            "title": "Post two title",
+            "body": "Post two body",
+            "reading_time": '300'
         }
-        header = self.get_token(username='user1', password='passuser1')
-        response = self.create_post(payload, header)
-        id_ = response.json().get('id')
-        post = Post.objects.get(id=id_)
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(post.author, self.user1)
-        self.assertEqual(post.title, 'title')
-        self.assertEqual(post.body, 'body')
-        self.assertEqual(post.reading_time, timedelta(seconds=300))
-        self.assertEqual(Post.objects.count(), 2)
+        access_key = self.authenticate('09211111111', '123456789')
+        url = reverse('api-blog:list')
+        response = self.client.post(url, data=payload, HTTP_AUTHORIZATION=access_key)
+        post2 = Post.objects.get(id=2)
+        url_del = reverse('api-blog:detail', args=(post2.id,))
+        response = self.client.delete(url_del, HTTP_AUTHORIZATION=access_key)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+    
+    def test_update_or_delete_not_own_post(self):
+        access_key = self.authenticate('09222222222', '123456789')
+        
+        payload_update = {
+            "title": "Post two title updated",
+            "body": "Post two body updated",
+            "reading_time": '600'
+        }
 
-        # try to delete
-        header = self.get_token(
-            username='user2', password='passuser2', logout=True)
-        response = self.delete_post(post.id, header)
+        url = reverse('api-blog:detail', args=(self.post1.id,))
+        response = self.client.put(url, data=payload_update, HTTP_AUTHORIZATION=access_key)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertNotEqual(Post.objects.count(), 1)
-
-    def test_update_post_with_diffrent_author(self):
-        payload = {
-            'title': 'title',
-            'body': 'body',
-            'reading_time': 300
-        }
-        header = self.get_token(username='user1', password='passuser1')
-        response = self.create_post(payload, header)
-        id_ = response.json().get('id')
-        post = Post.objects.get(id=id_)
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertEqual(post.author, self.user1)
-        self.assertEqual(post.title, 'title')
-        self.assertEqual(post.body, 'body')
-        self.assertEqual(post.reading_time, timedelta(seconds=300))
-        self.assertEqual(Post.objects.count(), 2)
-
-        # try to update
-        payload = {
-            'title': 'title updated',
-            'body': 'body updated',
-            'reading_time': 500
-        }
-        header = self.get_token(
-            username='user2', password='passuser2', logout=True)
-        response = self.update_post(post.id, payload, header)
+    
+        response = self.client.delete(url, HTTP_AUTHORIZATION=access_key)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)

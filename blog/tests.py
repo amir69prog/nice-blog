@@ -13,8 +13,10 @@ class BlogTests(TestCase):
     
     def setUp(self) -> None:
         self.user = User.objects.create_user(
+            phone_number='09211111111',
             username='testuser',
-            email='testuser@gmail.com'
+            email='testuser@gmail.com',
+            password='123456879',
         )
 
         self.post = Post.objects.create(

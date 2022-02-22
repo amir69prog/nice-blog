@@ -1,131 +1,198 @@
 from typing import Dict
 
 from django.contrib.auth import get_user_model
-from django.http import HttpResponse
 from django.urls import reverse
-
-
 from rest_framework.test import APITestCase
 from rest_framework import status
-
-from blog.models import Post
 
 
 User = get_user_model()
 
 
-class UserAPITests(APITestCase):
+class SessionAuthUserTests(APITestCase):
 
-    def setUp(self):
-        self.user1 = User.objects.create_user(
-            username='user1', password='passuser1')
-        self.user2 = User.objects.create_user(
-            username='user2', password='passuser2')
+    def setUp(self) -> None:
+        self.user = User.objects.create_user(
+            phone_number='09127777777',
+            username='username1',
+            email='username_email@gmail.com',
+            first_name='username_first_name',
+            last_name='username_last_name',
+            password='123456789',
+        )
 
-    def login_by_session(test_func, username='user1', password='passuser1'):
-        def wrapper(self):
-            self.client.login(username=username, password=password)
-            return test_func(self)
-        return wrapper
+    def login(self):
+        self.client.login(phone_number='09127777777', password='123456789')
 
-    def get_response_user_list_view(self) -> HttpResponse:
-        """ Return response for UserListView """
+    def test_user_content(self):
+        self.assertEqual(self.user.phone_number, '09127777777')
+        self.assertEqual(self.user.username, 'username1')
+        self.assertEqual(self.user.email, 'username_email@gmail.com')
+        self.assertEqual(self.user.first_name, 'username_first_name')
+        self.assertEqual(self.user.last_name, 'username_last_name')
+
+    def test_user_list_view(self):
         url = reverse('api-user:list')
         response = self.client.get(url)
-        return response
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def get_response_user_detail_view(self, id: int) -> HttpResponse:
-        """ Return response for UserDetailView """
-        url = reverse('api-user:detail', kwargs={'pk': id})
+    def test_user_detail_view(self):
+        url = reverse('api-user:detail', args=(self.user.id,))
         response = self.client.get(url)
-        return response
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def update_user(self, id: int, payload: Dict, header: Dict) -> HttpResponse:
-        url = reverse('api-user:detail', kwargs={'pk': id})
-        response = self.client.put(url, data=payload, header=header)
-        return response
+    def test_user_list_view_authorized(self):
+        self.login()
+        url = reverse('api-user:list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code,
+                         status.HTTP_403_FORBIDDEN)  # not verified
+        self.assertEqual(response.json(), {
+                         'detail': 'Your account is not verified.'})
 
-    def delete_user(self, id: int, header: Dict) -> HttpResponse:
-        url = reverse('api-user:detail', kwargs={'pk': id})
-        response = self.client.delete(url, header=header)
-        return response
+    def test_user_detail_view_authorized(self):
+        self.login()
+        url = reverse('api-user:detail', args=(self.user.id,))
+        response = self.client.get(url)
+        self.assertEqual(response.status_code,
+                         status.HTTP_403_FORBIDDEN)  # not verified
+        self.assertEqual(response.json(), {
+                         'detail': 'Your account is not verified.'})
 
-    def get_token(self, username: str = 'user1', password: str = 'passuser1', logout: bool = False) -> Dict:
-        if logout:
-            self.client.logout()
-        url = reverse('rest_login')
-        payload = {'username': username, 'password': password}
-        response = self.client.post(url, data=payload, )
-        token = response.json().get('key')
-        header = {'Authorization': f'Token {token}'}
-        return header
 
-    def test_no_authorization_user_list_view(self):
-        """ Testing `UserListView` without any authorization """
-        response = self.get_response_user_list_view()
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+class TokenAuthUserTests(APITestCase):
 
-    @login_by_session
-    def test_athorization_user_list_view(self):
-        """ Testing `UserListView` with authorization """
-        response = self.get_response_user_list_view()
+    def setUp(self) -> None:
+        self.user = User.objects.create_user(
+            phone_number='09127777777',
+            username='username1',
+            email='username_email@gmail.com',
+            first_name='username_first_name',
+            last_name='username_last_name',
+            password='123456789',
+        )
+        self.user2 = User.objects.create_user(
+            phone_number='09212222222',
+            username='username2',
+            email='username2_email@gmail.com',
+            first_name='username2_first_name',
+            last_name='username2_last_name',
+            password='123456789',
+        )
+
+    def authenticate(self, phone_number: str, password: str):
+        """ Get the access key then authenticate with the token """
+        url = reverse('token_obtain_pair')  # url getting token
+        response = self.client.post(
+            url,
+            {
+                'phone_number': phone_number,
+                'password': password
+            },
+        )
+        access_key = response.json().get('access')
+        return 'Bearer ' + access_key
+
+    def test_user_list_view_authorized(self):
+        access_key = self.authenticate('09127777777', '123456789')
+        url = reverse('api-user:list')
+        response = self.client.get(url, HTTP_AUTHORIZATION=access_key)
+        self.assertEqual(response.status_code,
+                         status.HTTP_403_FORBIDDEN)  # not verified
+        self.assertEqual(response.json(), {
+                         'detail': 'Your account is not verified.'})
+
+    def test_user_detail_view_authorized(self):
+        access_key = self.authenticate('09127777777', '123456789')
+        url = reverse('api-user:detail', args=(self.user.id,))
+        response = self.client.get(url, HTTP_AUTHORIZATION=access_key)
+        self.assertEqual(response.status_code,
+                         status.HTTP_403_FORBIDDEN)  # not verified
+        self.assertEqual(response.json(), {
+                         'detail': 'Your account is not verified.'})
+
+    def test_verified_user_list_view(self):
+        self.user.is_verified = True
+        self.user.save()
+        access_key = self.authenticate('09127777777', '123456789')
+        url = reverse('api-user:list')
+        response = self.client.get(url, HTTP_AUTHORIZATION=access_key)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_no_authorizatin_user_detail_view(self):
-        """ Testing `UserDetailView` without any authorization """
-        response = self.get_response_user_detail_view(id=self.user1.id)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-
-    def test_user1_content(self):
-        self.assertEqual(self.user1.username, 'user1')
-        self.assertEqual(self.user1.first_name, '')
-        self.assertEqual(self.user1.last_name, '')
-        self.assertEqual(self.user1.email, '')
-
-    @login_by_session
-    def test_authorizatin_user_detail_view(self):
-        """ Testing `UserDetailView` without any authorization """
-        response = self.get_response_user_detail_view(id=self.user1.id)
+    def test_verified_user_detail_view(self):
+        self.user.is_verified = True
+        self.user.save()
+        access_key = self.authenticate('09127777777', '123456789')
+        url = reverse('api-user:detail', args=(self.user.id,))
+        response = self.client.get(url, HTTP_AUTHORIZATION=access_key)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_update_user_with_token(self):
+    def test_update_user(self):
+        self.user.is_verified = True
+        self.user.save()
+        access_key = self.authenticate('09127777777', '123456789')
+        url = reverse('api-user:detail', args=(self.user.id,))
         payload = {
-            'username': 'user1',
-            'first_name': 'user1_first_name',
-            'last_name': 'user1_last_name',
-            'email': 'user1_email@gmail.com',
+            "phone_number": "09127777777",
+            "username": "username1",
+            "email": "username1@gmail.com",
+            "first_name": "first_name_username1",
+            "last_name": "last_name_username1"
         }
-        header = self.get_token()
-
-        response = self.update_user(self.user1.id, payload, header)
-        user = User.objects.get(id=self.user1.id)
+        response = self.client.put(
+            url, data=payload, HTTP_AUTHORIZATION=access_key)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(user.username, payload['username'])
-        self.assertEqual(user.first_name, payload['first_name'])
-        self.assertEqual(user.last_name, payload['last_name'])
-        self.assertEqual(user.email, payload['email'])
+        user1 = User.objects.filter(phone_number='09127777777').get()
+        self.assertEqual(user1.phone_number, '09127777777')
+        self.assertEqual(user1.username, 'username1')
+        self.assertEqual(user1.email, 'username1@gmail.com')
+        self.assertEqual(user1.first_name, 'first_name_username1')
+        self.assertEqual(user1.last_name, 'last_name_username1')
+        self.assertTrue(user1.is_verified)
 
-    def test_update_user_with_token_diffrent_user(self):
+    def test_update_different_user(self):
+        self.user.is_verified = True
+        self.user.save()
+        access_key = self.authenticate('09127777777', '123456789')
+        url = reverse('api-user:detail', args=(self.user2.id,))
         payload = {
-            'first_name': 'user1_first_name',
-            'last_name': 'user1_last_name',
-            'email': 'user1_email@gmail.com'
+            "phone_number": "09127777777",
+            "username": "username1",
+            "email": "username1@gmail.com",
+            "first_name": "first_name_username1",
+            "last_name": "last_name_username1"
         }
-        header = self.get_token(username='user2', password='passuser2')
-
-        response = self.update_user(self.user1.id, payload, header)
+        response = self.client.put(
+            url, data=payload, HTTP_AUTHORIZATION=access_key)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_user_post_with_token(self):
-        header = self.get_token()
-        response = self.delete_user(1, header)
+    def test_registration_user_then_delete(self):
+        url = reverse('api-user:signup')
+        payload = {
+            "phone_number": "09125555555",
+            "username": "username3",
+            "email": "username3_email@gmail.com",
+            "password": "123456789",
+            "password2": "123456789"
+        }
+        response = self.client.post(url, data=payload)
+        user3 = User.objects.filter(phone_number='09125555555').get()
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(User.objects.count(), 3)
+
+        self.assertEqual(user3.phone_number, '09125555555')
+        self.assertEqual(user3.username, 'username3')
+        self.assertEqual(user3.email, 'username3_email@gmail.com')
+        self.assertEqual(user3.first_name, '')
+        self.assertEqual(user3.last_name, '')
+        self.assertFalse(user3.is_verified)
+
+        user3.is_verified = True
+        access_key = self.authenticate('09125555555', '123456789')
+        url = reverse('api-user:detail', args=(user3.id,))
+        response = self.client.delete(url, HTTP_AUTHORIZATION=access_key)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        user3.save()
+        response = self.client.delete(url, HTTP_AUTHORIZATION=access_key)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
-        self.assertEqual(User.objects.count(), 1)
-
-    def test_user_post_with_token_diffrent_user(self):
-        header = self.get_token(
-            username='user2', password='passuser2', logout=True)
-        # try to delete user1 with user2
-        response = self.delete_user(self.user1.id, header)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(User.objects.count(), 2)
