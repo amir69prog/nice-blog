@@ -54,7 +54,7 @@ OK! for this sample project i've used these following technologies
 - [JWT](https://github.com/jazzband/djangorestframework-simplejwt) for auth with **tokens**
 - [OTP](https://github.com/pyauth/pyotp) as **OneTimePassword**
 - [Redis](https://github.com/jazzband/django-redis) for **caching** system
-- [django-crispy-forms](https://django-crispy-forms.readthedocs.io/en/latest/) for **rendering** out form in UI
+- [django-crispy-forms](https://django-crispy-forms.readthedocs.io/en/latest/) for **rendering** the forms in UI
 - [Markdown](https://pypi.org/project/Markdown/) for convert **Text > HTML**
 
 ## Features
