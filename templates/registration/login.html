@@ -1,0 +1,36 @@
+{% extends 'blog/base.html' %}{% block title %}Login{% endblock %}
+{% load static crispy_forms_tags %}
+
+
+{% block content %}
+
+<header class="masthead" style="background-image: url('{% static 'assets/img/home-bg.jpg' %}')">
+  <div class="container position-relative px-4 px-lg-5">
+    <div class="row gx-4 gx-lg-5 justify-content-center">
+      <div class="col-md-10 col-lg-8 col-xl-7">
+        <div class="site-heading">
+          <h1>Login</h1>
+          <span class="subheading">Login with your account</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container px-4 px-lg-5">
+  <div class="row gx-4 gx-lg-5 justify-content-center">
+    <div class="row">
+      <div class="col-md-8 mb-4">
+        <h1>Login</h1>
+        <form class="form-group" action="{% url 'login' %}" method="post">{% csrf_token %}
+          {{ form|crispy }}
+          <button type="submit" class="btn btn-success mt-2">Login</button><br>
+          <p>Forgot your password? <a href="{% url 'password_reset' %}" class="text text-info">reset password</a>
+            <br> Need an account? <a href="{% url 'accounts:signup' %}" class="text text-info">create your own</a>
+          </p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
