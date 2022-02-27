@@ -5,3 +5,4 @@ class PostMessages(Enum):
     POST_CREATED_SUCCESSFULLY = 'Your post has been created successfully.'
     POST_DELETED_SUCCESSFULLY = 'Your post has been deleted successfully.'
     POST_UPDATED_SUCCESSFULLY = 'Your post has been updated successfully.'
+    MARKDOWN_AVAILABLE = 'The markdown tool is available.'
