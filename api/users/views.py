@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.views.decorators.cache import cache_page
 from django.utils.decorators import method_decorator
 from django.core.cache import cache
+from django.contrib import messages
 from rest_framework import generics, permissions, response, status, views
 
 from accounts.extensions import generate_otp, is_verified_otp, send_otp
@@ -100,7 +101,7 @@ class OTPVerifyUser(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         otp = request.data.get('otp')
-        if not otp:  # maybe filled in POST property :)
+        if not otp:  # would be filled in POST dictionary :)
             otp = request.POST.get('otp')
 
         if not otp:
@@ -111,7 +112,6 @@ class OTPVerifyUser(views.APIView):
             )
         counter = cache.get('%s-counter' % user.phone_number, 0)
         remain_attmepts = cache.get('%s-remain' % user.phone_number, 0)
-        print(counter)
         if remain_attmepts >= 3:
             return response.Response({
                 'message': ViewMessages.ATTEMPTS_HAS_BEEN_FINISHED.value
@@ -124,12 +124,9 @@ class OTPVerifyUser(views.APIView):
             if is_verified:
                 user.is_verified = True
                 user.save()
-
-                return response.Response({
-                    'message': ViewMessages.USER_VERIFIED.value
-                },
-                    status=status.HTTP_200_OK,
-                )
+                text = ViewMessages.USER_VERIFIED.value
+                messages.add_message(request, messages.SUCCESS, text)
+                return redirect('accounts:profile')
             else:
                 cache.set('%s-remain' % user.phone_number,
                           remain_attmepts+1)  # one more attempts
