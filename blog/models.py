@@ -12,7 +12,8 @@ User = get_user_model()
 class Post(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='posts', related_query_name='post')
     title = models.CharField(max_length=200)
-    body = models.TextField()
+    subheading = models.TextField(help_text=PostMessages.MARKDOWN_AVAILABLE.value)
+    body = models.TextField(help_text=PostMessages.MARKDOWN_AVAILABLE.value)
     reading_time = models.DurationField(help_text=PostMessages.READING_TIME_HELP_TEXT.value) # in seconds
     date_created = models.DateTimeField(auto_now_add=True)
     date_updated = models.DateTimeField(auto_now=True)
