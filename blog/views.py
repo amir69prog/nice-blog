@@ -14,7 +14,7 @@ class PostListView(LoginRequiredMixin,
     login_url = '/accounts/login/'
     model = Post
     template_name = 'blog/index.html'
-    paginate_by = 5
+    paginate_by = 20
 
 
 class PostDetailView(LoginRequiredMixin,
@@ -28,7 +28,7 @@ class CreatePostView(LoginRequiredMixin,
                     UserVerifiedPermission, CreateView):
     login_url = '/accounts/login/'
     model = Post
-    fields = ('title', 'body', 'reading_time')
+    fields = ('title', 'subheading', 'body', 'reading_time')
     template_name = 'blog/create_post.html'
 
     def form_valid(self, form):
@@ -36,9 +36,6 @@ class CreatePostView(LoginRequiredMixin,
         form.instance.author = self.request.user
         messages.add_message(self.request, messages.SUCCESS, PostMessages.POST_CREATED_SUCCESSFULLY.value)
         return super().form_valid(form)
-    
-    def get_success_url(self) -> str:
-        return reverse('accounts:profile')
 
 
 class DeletePostView(LoginRequiredMixin,
@@ -62,13 +59,10 @@ class UpdatePostView(LoginRequiredMixin,
                     UpdateView):
     login_url = '/accounts/login/'
     model = Post
-    fields = ('title', 'body', 'reading_time')
+    fields = ('title', 'subheading', 'body', 'reading_time')
     template_name = 'blog/update_post.html'
 
     def form_valid(self, form):
         """ When submitting form if that valid adding message """
         messages.add_message(self.request, messages.SUCCESS, PostMessages.POST_UPDATED_SUCCESSFULLY.value)
         return super().form_valid(form)
-    
-    def get_success_url(self) -> str:
-        return reverse('accounts:profile')
