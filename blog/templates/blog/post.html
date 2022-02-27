@@ -1,5 +1,5 @@
 {% extends 'blog/base.html' %}{% block title %}{{ object.title }} - {{ object.author.username }}{% endblock %}
-{% load static %}
+{% load static markdown_tools %}
 
 {% block content %}
 <!-- Page Header-->
@@ -21,6 +21,7 @@
       <div class="col-md-10 col-lg-8 col-xl-7">
         <div class="header">
           <p class="subheading">
+            <h3>Details</h3>
             Posted by <a href="">{{ object.author.username }}</a>
             on <strong>{{ post.date_created|date:'F d, Y' }}</strong>
             <br>
@@ -30,7 +31,15 @@
           </p>
           <hr>
         </div>
-        {{ object.body|linebreaks }}
+        <div>
+          <h3>Subheader</h3>
+          {{ object.subheading|markdown|safe }}
+          <hr>
+        </div>
+        <div>
+          <h3>Content</h3>
+          {{ object.body|markdown|safe }}
+        </div>
       </div>
     </div>
   </div>
