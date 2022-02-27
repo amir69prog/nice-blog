@@ -1,5 +1,6 @@
 from datetime import datetime
 import base64
+from typing import Any
 
 from django.utils.crypto import get_random_string
 from django.core.cache import cache
@@ -31,7 +32,7 @@ def is_verified_otp(user: CustomUser, otp, counter):
     return False
 
 
-def send_otp(otp: int, from_email: str = None, user_phone_number: str = None, user_email: str = None, verify_url: str = None) -> bool:
+def send_otp(otp: Any, from_email: str = None, user_phone_number: str = None, user_email: str = None, verify_url: str = None) -> bool:
     """ Send OTPassword to the user_phone_number or user_email """
     try:
         if user_email:
@@ -48,7 +49,7 @@ def send_otp(otp: int, from_email: str = None, user_phone_number: str = None, us
             )
 
         elif user_phone_number:
-            print('OTP has been sent to %s phone number' % user_phone_number)
+            print('OTP has been sent to %s phone number: OTP <%s>' % (user_phone_number, otp))
     except Exception as err:
         print(str(err))
         return False
