@@ -1,0 +1,64 @@
+{% extends 'blog/base.html' %}{% block title %}Profile - {{ user.username }}{% endblock %}
+{% load static crispy_forms_tags %}
+
+{% block content %}
+<header class="masthead" style="background-image: url('{% static 'assets/img/home-bg.jpg' %}')">
+  <div class="container position-relative px-4 px-lg-5">
+    <div class="row gx-4 gx-lg-5 justify-content-center">
+      <div class="col-md-10 col-lg-8 col-xl-7">
+        <div class="site-heading">
+          <h1>Profile</h1>
+          <span class="subheading">Welcome <strong>{{ user.username|title }}</strong> dear</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container px-4 px-lg-5">
+  <div class="row gx-4 gx-lg-5 justify-content-center">
+    <div class="row">
+      <div class="col-md-8 mb-4">
+        <h1>Profile</h1>
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}" role="alert">
+          {{ message }}
+        </div>
+        {% endfor %}
+        <form action="" method="post">{% csrf_token %}
+          {{ form|crispy }}
+          <button type="submit" class="btn btn-success mt-2">Save</button>
+        </form>
+        <hr>
+        <h1 class="mt-4">My Posts</h1>
+        <ul class="list-group">
+          {% for post in user.posts.all %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <a href="{{ post.get_absolute_url }}">{{ post.title|truncatewords:7 }}</a>
+            <div>
+              <a type="button" post-id="{{ post.id }}" class="btn btn-outline-danger btn-sm"
+                href="{% url 'blog:delete' pk=post.id slug=post.slug %}">Delete</a>
+              <a type="button" post-id="{{ post.id }}" class="btn btn-outline-success btn-sm"
+                href="{% url 'blog:edit' pk=post.id slug=post.slug %}">Edit</a>
+            </div>
+          </li>
+          {% empty %}
+          <li class="list-group-item">No posts <a href="{% url 'blog:add' %}" class="text text-primary">+ Add</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="col-md-4">
+      <h1>Actions</h1>
+        <div class="list-group mt-4">
+          <a href="{% url 'blog:add' %}" class="list-group-item list-group-item-action">Add Posts</a>
+          {% if not user.is_verified %}
+          <a href="{% url 'api-user:verify-user' %}" class="list-group-item list-group-item-action">Verify account</a>
+          {% endif %}
+          <a href="{% url 'password_change' %}" class="list-group-item list-group-item-action">Chanage Password</a>
+          <a href="{% url 'logout' %}" class="list-group-item list-group-item-action">Logout</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
