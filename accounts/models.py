@@ -15,17 +15,17 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
         help_text=UserMessage.PHONE_NUMBER_HELP_TEXT.value,
         validators=[PhoneNumberValidator],
     )
-    username = models.CharField(max_length=200, blank=True, default='')
+    username = models.CharField(max_length=200, unique=True)
     first_name = models.CharField(max_length=200, blank=True, default='')
     last_name = models.CharField(max_length=200, blank=True, default='')
     email = models.EmailField(default='', blank=True)
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
-    is_verified = models.BooleanField(default=True)
+    is_verified = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
 
     USERNAME_FIELD = 'phone_number'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ['username',]
 
     class Meta:
         verbose_name = 'User'
