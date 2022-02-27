@@ -1,0 +1,32 @@
+{% extends 'blog/base.html' %}{% block title %}Edit Post - {{ object.title }}{% endblock %}
+{% load static crispy_forms_tags %}
+
+{% block content %}
+<header class="masthead" style="background-image: url('{% static 'assets/img/home-bg.jpg' %}')">
+    <div class="container position-relative px-4 px-lg-5">
+        <div class="row gx-4 gx-lg-5 justify-content-center">
+            <div class="col-md-10 col-lg-8 col-xl-7">
+                <div class="site-heading">
+                    <h1>Edit post</h1>
+                    <span class="subheading">Edit your post as quick</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container px-4 px-lg-5">
+    <div class="row gx-4 gx-lg-5 justify-content-center">
+        <div class="row">
+            <div class="col-md-8 mb-4">
+                <h1>Post detail</h1>
+                <form action="" method="post">{% csrf_token %}
+                    {{ form|crispy }}
+                    <button type="submit" class="btn btn-success mt-2">Save</button>
+                </form>
+                <hr>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
