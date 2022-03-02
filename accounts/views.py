@@ -39,4 +39,4 @@ class SignupView(CreateView):
     template_name = 'registration/signup.html'
     
     def get_success_url(self) -> str:
-        return reverse('/')
+        return reverse('login')
